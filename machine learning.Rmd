@@ -1,0 +1,73 @@
+---
+title: "Machine learning project"
+output: html_document
+
+---
+## Summary
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+## Getting and Cleaning Data
+```{r}
+library(caret)
+training<-read.csv("C:/Users/yilun/Desktop/pml-training.csv")
+testing<-read.csv("C:/Users/yilun/Desktop/pml-testing.csv")
+
+#clean data
+remove <- which(colSums(is.na(training) |training=="")>0.9*dim(training)[1]) 
+trainingclean <- training[,-remove]
+trainingclean <- trainingclean[,-c(1:7)]
+dim(trainingclean)
+
+#clean data
+remove <- which(colSums(is.na(testing) |testing=="")>0.9*dim(testing)[1]) 
+testingclean <- testing[,-remove]
+testingclean <- testingclean[,-1]
+dim(testingclean)
+```
+Clean the data and ready to analyze
+
+```{r}
+set.seed(1)
+trainp <- createDataPartition(trainingclean$classe, p=0.75, list=FALSE)
+train <- trainingclean[trainp,]
+validate <- trainingclean[-trainp,]
+```
+Get the training dataset and validation dataset.
+
+
+
+## Classification Tree
+```{r}
+library(rpart)
+library(rattle)
+trControl <- trainControl(method="cv", number=5)
+model_CT <- train(classe~., data=train, method="rpart", trControl=trControl)
+fancyRpartPlot(model_CT$finalModel)
+trainpred <- predict(model_CT,newdata=validate)
+confMatCT <- confusionMatrix(validate$classe,trainpred)
+confMatCT$table
+confMatCT$overall[1]
+
+```
+The accuracy is 50%, which is very low.
+
+
+## Random Forest
+```{r}
+library(randomForest)
+model_rf <- randomForest(classe ~ ., data=train)
+print(model_rf)
+plot(model_rf,main="Accuracy of Random forest model by number of predictors")
+trainpred <- predict(model_rf,newdata=validate)
+confMatRF <- confusionMatrix(validate$classe,trainpred)
+confMatRF$table
+confMatRF$overall[1]
+```
+The accuracy is 99.6%, which is pretty good.
+
+## Predict test dataset
+```{r}
+FinalTestPred <- predict(model_rf,newdata=testingclean)
+FinalTestPred
+```
